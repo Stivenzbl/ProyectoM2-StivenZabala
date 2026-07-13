@@ -1,0 +1,243 @@
+# openapi.yaml
+openapi: 3.0.0
+info:
+  title: MiniBlog API Specification
+  description: API para gestionar usuarios (authors), posts y comentarios del servicio MiniBlog de DevSpark. Diseñado con el patrón RESTful.
+  version: v1
+servers:
+  - url: /api/v1
+    description: Endpoint base de la API MiniBlog
+
+tags:
+  - name: Authors
+    description: Gestión completa de usuarios (authors).
+  - name: Posts
+    description: Gestión de publicaciones y comentarios.
+
+paths:
+  /authors:
+    get:
+      summary: Listar todos los autores.
+      operationId: listAuthors
+      tags: [Authors]
+      requestBody: {}
+      responses:
+        '200':
+          description: Lista exitosa de authors.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Author'
+        '404':
+          description: No se encontraron autores.
+    post:
+      summary: Crear un nuevo autor.
+      operationId: createAuthor
+      tags: [Authors]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AuthorInput'
+      responses:
+        '201':
+          description: Autor creado exitosamente.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Author'
+        '400':
+          description: Error de validación en los datos enviados (ej: email faltante).
+        '409':
+          description: Conflicto (Ej: Email ya registrado).
+
+  /authors/{id}:
+    get:
+      summary: Obtener detalles de un autor por ID.
+      operationId: getAuthorById
+      tags: [Authors]
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+        responses:
+          '200':
+            description: Detalles del autor.
+            content:
+              application/json:
+                schema:
+                  $ref: '#/components/schemas/Author'
+          '404':
+            description: Autor no encontrado.
+
+  /posts:
+    get:
+      summary: Listar todos los posts (o paginados).
+      operationId: listPosts
+      tags: [Posts]
+      requestBody: {}
+      responses:
+        '200':
+          description: Lista exitosa de posts.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PostSummary'
+    post:
+      summary: Crear un nuevo post.
+      operationId: createPost
+      tags: [Posts]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostInput'
+      responses:
+        '201':
+          description: Post creado exitosamente.
+
+  /posts/{id}:
+    get:
+      summary: Obtener detalles completos de un post, incluyendo comentarios.
+      operationId: getFullPostDetails
+      tags: [Posts]
+      parameters:
+        - in: path
+          name: id
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Detalle del post con todos los comentarios.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  post:
+                    $ref: '#/components/schemas/PostSummary'
+                  comments:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+        '404':
+          description: Post no encontrado.
+
+  /posts/author/{authorId}:
+    get:
+      summary: Listar todos los posts de un autor específico.
+      operationId: getPostsByAuthor
+      tags: [Posts]
+      parameters:
+        - in: path
+          name: authorId
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Lista exitosa de posts por autor.
+
+  /posts/{postId}/comments:
+    post:
+      summary: Crear un comentario para un post específico.
+      operationId: createComment
+      tags: [Posts]
+      parameters:
+        - in: path
+          name: postId
+          schema:
+            type: string
+          required: true
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CommentInput'
+      responses:
+        '201':
+          description: Comentario publicado exitosamente.
+
+  /posts/{postId}/comments:
+    get:
+      summary: Listar todos los comentarios asociados a un post.
+      operationId: listCommentsForPost
+      tags: [Posts]
+      parameters:
+        - in: path
+          name: postId
+          schema:
+            type: string
+          required: true
+      responses:
+        '200':
+          description: Lista exitosa de comentarios.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+
+components:
+  schemas:
+    Author:
+      type: object
+      properties:
+        id: { type: string, example: "1" }
+        name: { type: string, example: "Ana García" }
+        email: { type: string, format: email, example: "ana@example.com" }
+        bio: { type: string, example: "Desarrolladora full-stack." }
+        created_at: { type: string, format: date-time }
+    AuthorInput:
+      type: object
+      required: [name, email]
+      properties:
+        name: { type: string }
+        email: { type: string, format: email }
+        bio: { type: string }
+
+    PostSummary:
+      type: object
+      properties:
+        id: { type: string, example: "1" }
+        title: { type: string, example: "Introducción a Node.js" }
+        content: { type: string, example: "Node.js es un runtime..." }
+        author_id: { type: string, example: "1" }
+        published: { type: boolean }
+        created_at: { type: string, format: date-time }
+
+    PostInput:
+      type: object
+      required: [title, content, authorId]
+      properties:
+        title: { type: string }
+        content: { type: string }
+        authorId: { type: string }
+        published: { type: boolean, default: false }
+
+    CommentInput:
+      type: object
+      required: [authorId, content]
+      properties:
+        authorId: { type: string }
+        content: { type: string }
+
+    Comment:
+      type: object
+      properties:
+        id: { type: string, example: "1" }
+        post_id: { type: string }
+        author_id: { type: string }
+        content: { type: string }
+        created_at: { type: string, format: date-time }

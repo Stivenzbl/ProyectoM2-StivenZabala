@@ -1,27 +1,39 @@
 //* RESPONSABILIDAD: buscar/conectarse con la base de datos, para traer informacion y retornarla al controlador
 
-const users = [
-  { 
-    id: 1,
-    nombre: "Joaco",
-    rol: 'estudiantes'
-  },
-  { 
-    id: 2,
-    nombre: "Jose",
-    rol: 'estudiantes'
-  }
-]
+const { pool } = require("../config/dbConnect")
 
-const getUsersService = () => {
-  return users
+const getUsersService = async () => {
+  const { rows }  = await pool.query(`SELECT * FROM users`)
+  return rows
 }
 
-const getUserByIdService = (id) => {
-  return users.find( user => user.id === Number(id))  
+const getUserByIdService = async (id) => {
+  const { rows } = await pool.query(`SELECT * FROM users WHERE id = $1`, [id])
+
+  if(rows.length === 0){
+      const miError = new Error(`No existe un usuario con el id ${id}`)
+      miError.status = 400
+      throw miError
+  }
+
+  return rows
+}
+
+const createUserService = async (name, rol) => {
+
+    const query = `
+        INSERT INTO users (name, role) 
+        VALUES ($1, $2) 
+        RETURNING id, name, role
+    `
+    const { rows } = await pool.query(query, [name , rol ])
+    return rows
+
+
 }
 
 module.exports = {
   getUsersService,
-  getUserByIdService
+  getUserByIdService,
+  createUserService
 }
