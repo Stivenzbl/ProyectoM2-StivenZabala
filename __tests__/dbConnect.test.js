@@ -33,4 +33,19 @@ describe('getDbConfig', () => {
       password: 'pass'
     })
   })
+
+  it('debe priorizar DATABASE_URL sobre PG_HOST cuando ambos existen', () => {
+    const env = {
+      PG_HOST: 'localhost',
+      DATABASE_URL: 'postgresql://user:pass@railway.internal:5432/appdb'
+    }
+
+    expect(getDbConfig(env)).toMatchObject({
+      host: 'railway.internal',
+      port: 5432,
+      database: 'appdb',
+      user: 'user',
+      password: 'pass'
+    })
+  })
 })
