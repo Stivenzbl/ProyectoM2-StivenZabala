@@ -82,16 +82,51 @@ npm test
 
 ## Documentación OpenAPI
 
-El contrato de la API está en [openapi.yaml](openapi.yaml).
+El contrato de la API está en [openapi.yaml](openapi.yaml) (formato OpenAPI 3.0.3).
+
+Para visualizarla de forma interactiva (Swagger UI) sin instalar nada:
+
+- Abre [https://editor.swagger.io](https://editor.swagger.io) y arrastra/pega el contenido de `openapi.yaml`, o
+- Usa [Redoc](https://redocly.github.io/redoc/) apuntando al archivo.
+
+Si prefieres levantarla localmente:
+
+```bash
+npx @redocly/cli preview-docs openapi.yaml
+# o bien, con Swagger UI en un contenedor:
+docker run -p 8080:8080 -e SWAGGER_JSON=/openapi.yaml -v $PWD/openapi.yaml:/openapi.yaml swaggerapi/swagger-ui
+```
 
 ## Despliegue en Railway
 
-Para desplegar en Railway:
+1. En el proyecto de Railway crea el servicio web desde el repositorio de GitHub (build con NIXPACKS, comando de inicio `npm start`).
+2. Agrega un servicio de **PostgreSQL** (New → Database → PostgreSQL).
+3. En el servicio web → **Variables**, enlaza la base de datos con una referencia:
+   - `DATABASE_URL` = `${{Postgres.DATABASE_URL}}` (escribe `{{` y autocompleta).
+   
+   Railway también inyecta `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD` y `PGDATABASE`, pero la app prioriza `DATABASE_URL`.
+4. Define además:
+   - `PORT` = `3000`
+   - `NODE_ENV` = `production`
+5. El servidor crea las tablas y los datos iniciales automáticamente al arrancar (`src/config/initDb.js`), así que no hace falta correr `setup.sql`/`seed.sql` en producción.
 
-1. Agrega una base de datos PostgreSQL y anexa las variables de entorno correspondientes.
-2. Define `PORT` y `NODE_ENV=production`.
-3. Usa `npm start` como comando de inicio.
-4. Asegura que la base de datos esté accesible desde la instancia desplegada.
+**URLs de Railway**
+- **Internal URL** (`*.railway.internal`): la usa la app para hablar con Postgres dentro de la misma red privada de Railway (es la que aparece en los logs como `host=...railway.internal`). Requiere SSL, que la app habilita sola cuando el host no es `localhost`.
+- **Public URL** (dominio `*.up.railway.app` o el dominio personalizado que configures): es la que compartes para consumir la API desde fuera.
+
+> Si el deploy crashea con `ECONNREFUSED ::1:5432` / `host=localhost`, significa que `DATABASE_URL` no está llegando al servicio web. Revisa el paso 3.
+
+## Registro del uso de AI en el proyecto
+
+Este proyecto fue desarrollado con asistencia de **Claude (Anthropic)** a través de Claude Code, usado como copiloto para:
+
+- Diagnosticar y corregir el fallo de conexión a PostgreSQL en Railway (`ECONNREFUSED` por `DATABASE_URL` faltante y SSL requerido), centralizando la configuración de conexión en un único módulo.
+- Diseñar la arquitectura en capas (routes → controllers → services → db) y mantener coherencia con el modelo de la consigna (authors / posts / comments).
+- Garantizar integridad referencial (FK `comments → authors`, `comments → posts` en cascada, `posts → authors` con `RESTRICT`).
+- Escribir y verificar los tests unitarios con Supertest + Vitest.
+- Redactar la documentación (README, OpenAPI) y este registro de uso de AI.
+
+La decisión final de cada implementación y la revisión del código quedaron a cargo del autor humano.
 
 ## Estructura del proyecto
 

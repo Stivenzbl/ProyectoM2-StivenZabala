@@ -6,6 +6,8 @@ info:
 servers:
   - url: http://localhost:3000
     description: Servidor local
+  - url: https://mini-blog-production.up.railway.app
+    description: Despliegue en Railway (Public URL)
 paths:
   /:
     get:
@@ -136,7 +138,7 @@ paths:
           description: Datos inválidos
   /posts/author/{authorId}:
     get:
-      summary: Listar posts por autor
+      summary: Listar posts por autor (con detalle del autor)
       parameters:
         - in: path
           name: authorId
@@ -145,13 +147,26 @@ paths:
             type: integer
       responses:
         '200':
-          description: Lista de posts del autor
+          description: Lista de posts del autor, cada uno con el detalle de su autor embebido
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Post'
+                  allOf:
+                    - $ref: '#/components/schemas/Post'
+                    - type: object
+                      properties:
+                        author:
+                          type: object
+                          properties:
+                            id:
+                              type: integer
+                            name:
+                              type: string
+                            email:
+                              type: string
+                              format: email
   /posts/{id}:
     get:
       summary: Obtener un post con sus comentarios

@@ -37,6 +37,24 @@ const initializateDatabase = async () => {
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_posts_author_id ON posts (author_id)`)
   await pool.query(`CREATE INDEX IF NOT EXISTS idx_comments_post_id ON comments (post_id)`)
 
+  // Garantiza la integridad referencial comments -> authors de forma idempotente.
+  // (En el esquema inicial nos faltó esta FK; este bloque la agrega si no existe,
+  // sin romper despliegues ya existentes). Al borrar un autor se eliminan en
+  // cascada sus comentarios; los posts usan ON DELETE RESTRICT (arriba).
+  await pool.query(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'fk_comments_author' AND table_name = 'comments'
+      ) THEN
+        ALTER TABLE comments
+          ADD CONSTRAINT fk_comments_author
+          FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE;
+      END IF;
+    END $$;
+  `)
+
   await pool.query(`
     INSERT INTO authors (name, email, bio)
     SELECT 'Ana García', 'ana@example.com', 'Desarrolladora full-stack apasionada por Node.js'

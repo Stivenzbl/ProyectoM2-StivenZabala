@@ -32,7 +32,8 @@ CREATE TABLE comments (
     author_id INTEGER NOT NULL,
     content TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE -- Si borramos un post, los comentarios desaparecen.
+    FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,   -- Si borramos un post, sus comentarios desaparecen.
+    FOREIGN KEY (author_id) REFERENCES authors(id) ON DELETE CASCADE -- Si borramos un autor, sus comentarios desaparecen.
 );
 
 -- Índice sugerido para mejorar búsquedas por autor/post

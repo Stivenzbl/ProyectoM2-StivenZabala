@@ -27,8 +27,32 @@ exports.getPostById = async (id) => {
 };
 
 exports.getPostsByAuthor = async (authorId) => {
-  const queryText = 'SELECT id, title, content, author_id, published, created_at FROM posts WHERE author_id = $1 ORDER BY created_at DESC;';
-  return db.query(queryText, [authorId]);
+  const queryText = `
+    SELECT
+      p.id, p.title, p.content, p.author_id, p.published, p.created_at,
+      a.name  AS author_name,
+      a.email AS author_email
+    FROM posts p
+    JOIN authors a ON a.id = p.author_id
+    WHERE p.author_id = $1
+    ORDER BY p.created_at DESC;
+  `;
+  const rows = await db.query(queryText, [authorId]);
+  // Embebemos el detalle del autor en cada post para cumplir con la consigna
+  // "posts con detalle de su author".
+  return rows.map((r) => ({
+    id: r.id,
+    title: r.title,
+    content: r.content,
+    author_id: r.author_id,
+    published: r.published,
+    created_at: r.created_at,
+    author: {
+      id: r.author_id,
+      name: r.author_name,
+      email: r.author_email,
+    },
+  }));
 };
 
 exports.updatePost = async (id, updateData) => {
