@@ -110,9 +110,10 @@ docker run -p 8080:8080 -e SWAGGER_JSON=/openapi.yaml -v $PWD/openapi.yaml:/open
    - `NODE_ENV` = `production`
 5. El servidor crea las tablas y los datos iniciales automáticamente al arrancar (`src/config/initDb.js`), así que no hace falta correr `setup.sql`/`seed.sql` en producción.
 
-**URLs de Railway**
-- **Internal URL** (`*.railway.internal`): la usa la app para hablar con Postgres dentro de la misma red privada de Railway (es la que aparece en los logs como `host=...railway.internal`). Requiere SSL, que la app habilita sola cuando el host no es `localhost`.
-- **Public URL** (dominio `*.up.railway.app` o el dominio personalizado que configures): es la que compartes para consumir la API desde fuera.
+**URLs de este despliegue**
+- **API (Public URL)**: `https://TU-DOMINIO-WEB.up.railway.app` — se genera en el **servicio web** (Settings → Networking → Generate Domain). Es la URL para consumir la API (GET /authors, POST /posts, etc.).
+- **Postgres (Public URL)**: `https://postgres-production-6435.up.railway.app` — **solo para conectar un cliente Postgres externo** (psql, DBeaver, TablePlus) al puerto 5432 desde tu máquina. **No es HTTP**: si la abrís en el navegador da "Application failed to respond" porque la base de datos no sirve HTTP.
+- **Internal URL**: `*.railway.internal` — la usa la API para hablar con Postgres dentro de la red privada de Railway (aparece en los logs como `host=...railway.internal`). Requiere SSL, que la app habilita sola cuando el host no es `localhost`.
 
 > Si el deploy crashea con `ECONNREFUSED ::1:5432` / `host=localhost`, significa que `DATABASE_URL` no está llegando al servicio web. Revisa el paso 3.
 
