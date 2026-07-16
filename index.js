@@ -2,8 +2,7 @@
 const { pool } = require("./src/config/dbConnect")
 const { initializateDatabase } = require("./src/config/initDb")
 const { server } = require("./src/server")
-const { loadEnvFile  } =  require("node:process")
-loadEnvFile('.env')
+require("dotenv").config()
 
 const startServer = async () => {
 
