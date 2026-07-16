@@ -6,7 +6,7 @@ info:
 servers:
   - url: http://localhost:3000
     description: Servidor local
-  - url: https://mini-blog-production.up.railway.app
+  - url: https://proyectom2-stivenzabala-production.up.railway.app/
     description: Despliegue en Railway (Public URL)
 paths:
   /:

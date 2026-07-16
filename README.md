@@ -84,7 +84,16 @@ npm test
 
 El contrato de la API está en [openapi.yaml](openapi.yaml) (formato OpenAPI 3.0.3).
 
-Para visualizarla de forma interactiva (Swagger UI) sin instalar nada:
+### Swagger UI integrado (en vivo)
+
+La propia API sirve **Swagger UI** de forma interactiva en la ruta `/docs`, así que no necesitás instalar nada para explorar y probar los endpoints directamente:
+
+- **Local**: [http://localhost:3000/docs](http://localhost:3000/docs)
+- **En producción (Railway)**: `https://<TU-DOMINIO-WEB>.up.railway.app/docs` (reemplazá `<TU-DOMINIO-WEB>` por el dominio que generaste en el servicio web → Settings → Networking → Generate Domain).
+
+El bloque `servers` de `openapi.yaml` ya incluye la URL local y la del despliegue en Railway, por lo que al abrir `/docs` los *Try it out* se ejecutan contra el entorno correspondiente. Esta misma ruta es la que documenta el **deploy**: la URL de Railway figura como servidor del contrato.
+
+Para visualizar el archivo por fuera de la API (sin levantar el servidor):
 
 - Abre [https://editor.swagger.io](https://editor.swagger.io) y arrastra/pega el contenido de `openapi.yaml`, o
 - Usa [Redoc](https://redocly.github.io/redoc/) apuntando al archivo.
@@ -117,17 +126,11 @@ docker run -p 8080:8080 -e SWAGGER_JSON=/openapi.yaml -v $PWD/openapi.yaml:/open
 
 > Si el deploy crashea con `ECONNREFUSED ::1:5432` / `host=localhost`, significa que `DATABASE_URL` no está llegando al servicio web. Revisa el paso 3.
 
-## Registro del uso de AI en el proyecto
+## Registro del uso de IA en el proyecto
 
-Este proyecto fue desarrollado con asistencia de **Claude (Anthropic)** a través de Claude Code, usado como copiloto para:
+Este proyecto se desarrolló con asistencia de **Claude (Anthropic)** a través de **Claude Code**. El detalle completo —herramientas usadas, tareas delegadas, flujo de trabajo, supervisión humana y limitaciones— está en [DOCUMENTACION_IA.md](DOCUMENTACION_IA.md).
 
-- Diagnosticar y corregir el fallo de conexión a PostgreSQL en Railway (`ECONNREFUSED` por `DATABASE_URL` faltante y SSL requerido), centralizando la configuración de conexión en un único módulo.
-- Diseñar la arquitectura en capas (routes → controllers → services → db) y mantener coherencia con el modelo de la consigna (authors / posts / comments).
-- Garantizar integridad referencial (FK `comments → authors`, `comments → posts` en cascada, `posts → authors` con `RESTRICT`).
-- Escribir y verificar los tests unitarios con Supertest + Vitest.
-- Redactar la documentación (README, OpenAPI) y este registro de uso de AI.
-
-La decisión final de cada implementación y la revisión del código quedaron a cargo del autor humano.
+Resumen: Claude/Claude Code actuó como copiloto en el diagnóstico de la conexión a PostgreSQL en Railway (`ECONNREFUSED` por `DATABASE_URL` faltante y SSL requerido), el diseño de la arquitectura en capas, la integridad referencial, la integración de Swagger UI (`/docs`), los tests (Supertest + Vitest) y la documentación. La decisión final de cada implementación y la revisión del código quedaron a cargo del autor humano.
 
 ## Estructura del proyecto
 
@@ -138,3 +141,4 @@ La decisión final de cada implementación y la revisión del código quedaron a
 - [src/services](src/services) → encapsula la lógica de negocio y SQL
 - [src/config](src/config) → conecta con PostgreSQL y crea el esquema inicial
 - [__tests__](__tests__) → pruebas HTTP con Supertest y Vitest
+- [DOCUMENTACION_IA.md](DOCUMENTACION_IA.md) → documentación del uso de IA en el proyecto
