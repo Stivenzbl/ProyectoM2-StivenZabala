@@ -41,13 +41,18 @@ const parseDatabaseUrl = (databaseUrl) => {
 const getDbConfig = (env = process.env) => {
   const databaseUrlConfig = parseDatabaseUrl(env.DATABASE_URL || env.POSTGRES_URL || env.POSTGRES_PRISMA_URL || env.DB_URL)
 
+  const host = databaseUrlConfig?.host || env.PGHOST || env.PG_HOST || env.DB_HOST || env.PGHOSTADDR || "localhost"
+  const isLocal = host === "localhost" || host === "127.0.0.1"
+
   return {
-    host: databaseUrlConfig?.host || env.PGHOST || env.PG_HOST || env.DB_HOST || env.PGHOSTADDR || "localhost",
+    host,
     port: Number(databaseUrlConfig?.port || env.PGPORT || env.PG_PORT || env.DB_PORT || 5432),
     database: databaseUrlConfig?.database || env.PGDATABASE || env.PG_DATABASE || env.DB_NAME || "miniblog_db",
     user: databaseUrlConfig?.user || env.PGUSER || env.PG_USER || env.DB_USER || "postgres",
     password: databaseUrlConfig?.password || env.PGPASSWORD || env.PG_PASSWORD || env.DB_PASSWORD || "postgres",
-    ssl: databaseUrlConfig?.ssl,
+    // Railway (y la mayoría de Postgres en la nube) exigen SSL. Si el host es
+    // remoto y no venía sslmode en la URL, lo activamos para evitar el siguiente error.
+    ssl: databaseUrlConfig?.ssl || (isLocal ? undefined : { rejectUnauthorized: false }),
     max: Number(env.DB_MAX_CONNECT || 10),
     idleTimeoutMillis: Number(env.DB_IDLETIMEOUT || 10_000),
     connectionTimeoutMillis: Number(env.DB_CONNECTIONTIMEOUT || 5_000)
