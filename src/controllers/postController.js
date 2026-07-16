@@ -1,123 +1,136 @@
-// src/controllers/postController.js
-/**
- * @module postController
- * Maneja la lógica de las rutas HTTP para los posts y comentarios relacionados.
- */
-const express = require('express');
-const router = express.Router();
 const postService = require('../services/postService');
 const commentService = require('../services/commentService');
 
-// --- Posts Endpoints ---
+const getAllPosts = async (req, res) => {
+  try {
+    const posts = await postService.getAllPosts();
+    return res.status(200).json(posts);
+  } catch (error) {
+    console.error('Error al listar posts:', error);
+    return res.status(500).json({ message: 'Error interno del servidor al obtener la lista de posts.' });
+  }
+};
 
-/**
- * GET /posts - Listar todos los posts (puedo agregar paginación y filtros en el futuro).
- */
-router.get('/', async (req, res) => {
-    try {
-        const posts = await postService.getAllPosts();
-        res.status(200).json(posts);
-    } catch (error) {
-        console.error("Error al listar posts:", error);
-        res.status(500).json({ message: "Error interno del servidor al obtener la lista de posts." });
+const createPost = async (req, res) => {
+  const { title, content, authorId, published } = req.body;
+
+  if (!title || !String(title).trim()) {
+    return res.status(400).json({ message: 'El título es obligatorio.' });
+  }
+
+  if (!content || !String(content).trim()) {
+    return res.status(400).json({ message: 'El contenido es obligatorio.' });
+  }
+
+  if (!authorId) {
+    return res.status(400).json({ message: 'author_id es obligatorio.' });
+  }
+
+  try {
+    const newPost = await postService.createPost({ title: String(title).trim(), content: String(content).trim(), authorId, published: Boolean(published) });
+    return res.status(201).json(newPost);
+  } catch (error) {
+    if (error.code === '23503') {
+      return res.status(400).json({ message: 'El author_id proporcionado no existe.' });
     }
-});
+    console.error('Error al crear post:', error);
+    return res.status(500).json({ message: 'No se pudo crear el post.' });
+  }
+};
 
-/**
- * POST /posts - Crear un nuevo post.
- */
-router.post('/', async (req, res) => {
-    const { title, content, authorId, published } = req.body;
-
-    if (!title || !content || !authorId) {
-        return res.status(400).json({ message: "Título, contenido y autor_id son campos obligatorios." });
+const getPostById = async (req, res) => {
+  try {
+    const post = await postService.getPostById(req.params.id);
+    if (!post) {
+      return res.status(404).json({ message: `Post con ID ${req.params.id} no encontrado.` });
     }
-
-    try {
-        // Aquí se podría agregar un middleware para validar que authorId exista antes de llamar al servicio.
-        const newPost = await postService.createPost({ title, content, authorId, published: !!published }); // Aseguramos booleanos
-        res.status(201).json(newPost);
-    } catch (error) {
-        // Manejo de errores comunes de la DB (ej: FK constraint violation)
-        console.error("Error al crear post:", error);
-        res.status(500).json({ message: `No se pudo crear el post. Asegúrate de que author_id (${authorId}) sea válido.` });
+    const comments = await commentService.listCommentsByPost(req.params.id);
+    return res.status(200).json({ post, comments });
+  } catch (error) {
+    console.error('Error al obtener post:', error);
+    if (error.status === 404) {
+      return res.status(404).json({ message: `Post con ID ${req.params.id} no encontrado.` });
     }
-});
+    return res.status(500).json({ message: 'Error interno del servidor al recuperar el post y sus comentarios.' });
+  }
+};
 
-/**
- * GET /posts/:id - Obtener detalle completo de un post (incluyendo comentarios si aplica).
- */
-router.get('/:id', async (req, res) => {
-    const postId = req.params.id;
-    try {
-        // 1. Obtener el Post base
-        const post = await postService.getPostById(postId);
+const getPostsByAuthor = async (req, res) => {
+  try {
+    const posts = await postService.getPostsByAuthor(req.params.authorId);
+    return res.status(200).json(posts);
+  } catch (error) {
+    console.error('Error al obtener posts por autor:', error);
+    return res.status(500).json({ message: 'Error interno del servidor.' });
+  }
+};
 
-        if (!post) {
-            return res.status(404).json({ message: `Post con ID ${postId} no encontrado.` });
-        }
+const createComment = async (req, res) => {
+  const { authorId, content } = req.body;
 
-        // 2. Obtener los comentarios asociados (Combinando datos en el controlador/respuesta)
-        const comments = await commentService.listCommentsByPost(postId);
+  if (!authorId) {
+    return res.status(400).json({ message: 'authorId es obligatorio.' });
+  }
 
-        res.status(200).json({
-            post, // El post principal
-            comments: comments // La lista de comentarios
-        });
+  if (!content || !String(content).trim()) {
+    return res.status(400).json({ message: 'El contenido es obligatorio.' });
+  }
 
-    } catch (error) {
-        console.error("Error al obtener post:", error);
-        res.status(500).json({ message: "Error interno del servidor al recuperar el post y sus comentarios." });
+  try {
+    await commentService.createComment(req.params.postId, authorId, String(content).trim());
+    return res.status(201).json({ message: 'Comentario publicado exitosamente.' });
+  } catch (error) {
+    if (error.code === '23503') {
+      return res.status(400).json({ message: 'El post o author indicado no existe.' });
     }
-});
+    console.error('Error al comentar:', error);
+    return res.status(500).json({ message: 'No se pudo publicar el comentario.' });
+  }
+};
 
+const listCommentsByPost = async (req, res) => {
+  try {
+    const comments = await commentService.listCommentsByPost(req.params.postId);
+    return res.status(200).json(comments);
+  } catch (error) {
+    console.error('Error al listar comentarios:', error);
+    return res.status(500).json({ message: 'Error interno del servidor.' });
+  }
+};
 
-// --- Author-centric Endpoints ---
-
-/**
- * GET /posts/author/:authorId - Obtener todos los posts de un autor específico.
- */
-router.get('/author/:authorId', async (req, res) => {
-    const authorId = req.params.authorId;
-    try {
-        const posts = await postService.getPostsByAuthor(authorId);
-
-        if (!posts || posts.length === 0) {
-            return res.status(404).json({ message: `No se encontraron publicaciones para el autor con ID ${authorId}.` });
-        }
-        res.status(200).json(posts);
-    } catch (error) {
-        console.error("Error al obtener posts por autor:", error);
-        res.status(500).json({ message: "Error interno del servidor." });
+const updatePost = async (req, res) => {
+  try {
+    const updatedPost = await postService.updatePost(req.params.id, req.body);
+    return res.status(200).json(updatedPost);
+  } catch (error) {
+    if (error.status === 404) {
+      return res.status(404).json({ message: `Post con ID ${req.params.id} no encontrado.` });
     }
-});
+    console.error('Error al actualizar post:', error);
+    return res.status(500).json({ message: 'No se pudo actualizar el post.' });
+  }
+};
 
-/**
- * POST /posts/:postId/comments - Crear un comentario para el post.
- */
-router.post('/:postId/comments', async (req, res) => {
-    const postId = req.params.postId;
-    const { authorId, content } = req.body;
-
-    if (!authorId || !content) {
-        return res.status(400).json({ message: "Author ID y contenido son obligatorios para comentar." });
+const deletePost = async (req, res) => {
+  try {
+    await postService.deletePost(req.params.id);
+    return res.status(204).send();
+  } catch (error) {
+    if (error.status === 404) {
+      return res.status(404).json({ message: `Post con ID ${req.params.id} no encontrado.` });
     }
+    console.error('Error al borrar post:', error);
+    return res.status(500).json({ message: 'No se pudo eliminar el post.' });
+  }
+};
 
-    try {
-        // Validaciones: Deberíamos verificar si el post y el autor existen antes de intentar insertar.
-        await commentService.createComment(postId, authorId, content);
-        return res.status(201).json({ message: "Comentario publicado exitosamente." });
-    } catch (error) {
-        console.error("Error al comentar:", error);
-        // Nota: El servicio de comentario debe manejar explícitamente la verificación de FKs faltantes.
-        res.status(500).json({ message: `No se pudo publicar el comentario: ${error.message}` });
-    }
-});
-
-/**
- * PUT /posts/:id - Actualizar post. (Se puede hacer aquí, pero es más limpio hacerlo en servicios y llamarlo desde el controlador principal)
- */
-// Los endpoints de PUT/DELETE para posts seguirán la misma lógica que los de authors,
-// por lo que se mantendrán los placeholders o serán refactorizados a partir del postController.js.
-
-module.exports = router;
+module.exports = {
+  getAllPosts,
+  createPost,
+  getPostById,
+  getPostsByAuthor,
+  createComment,
+  listCommentsByPost,
+  updatePost,
+  deletePost
+};

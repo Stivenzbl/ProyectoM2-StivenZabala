@@ -1,77 +1,37 @@
-// __tests__/comment.test.js
-const request = require('supertest');
-const express = require('express');
+import request from 'supertest';
+import express from 'express';
+import { createRequire } from 'module';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const require = createRequire(import.meta.url);
+const commentService = require('../src/services/commentService');
 const postRoutes = require('../src/routes/postRoutes');
 
-// 1. Configurar la aplicación Express minimalista SOLO para testing de comentarios y posts.
 const app = express();
 app.use(express.json());
 app.use('/posts', postRoutes);
 
+describe('Comments API Endpoints', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    commentService.createComment = vi.fn();
+    commentService.listCommentsByPost = vi.fn();
+  });
 
-describe('Comments API Endpoints Tests (/api/v1/posts/:postId/comments)', () => {
+  it('debería devolver 400 si falta contenido o authorId', async () => {
+    const response = await request(app).post('/posts/1/comments').send({ content: '' });
 
-    // Constantes simuladas basadas en seeds iniciales para los tests.
-    const MOCK_POST_ID = '5'; // ID de "Async/Await explicado"
-    const MOCK_AUTHOR_ID = '999'; // Nuevo autor temporal de prueba
+    expect(response.statusCode).toBe(400);
+  });
 
+  it('debería listar comentarios de un post con status 200', async () => {
+    commentService.listCommentsByPost.mockResolvedValue([
+      { id: 1, post_id: 1, author_id: 1, content: 'Comentario', created_at: '2024-01-01T00:00:00.000Z' }
+    ]);
 
-    // =========================================
-    // TEST 1: POST /posts/:postId/comments - Creación de comentarios (Flujo crítico)
-    describe('POST /comments', () => {
-        it('debe crear un comentario exitosamente, validando post y autor.', async () => {
-            const newComment = { authorId: MOCK_AUTHOR_ID, content: 'Comentario de prueba para testeo.' };
+    const response = await request(app).get('/posts/1/comments');
 
-            // Simulación del request POST. Nota que el middleware debe estar configurado en la ruta principal.
-             /*
-            const response = await request(app)
-                .post(`/${MOCK_POST_ID}/comments`)
-                .send(newComment);
-
-            expect(response.statusCode).toBe(201);
-            expect(response.body).toHaveProperty('message', 'Comentario publicado exitosamente.');
-         */
-        });
-
-        it('debe devolver 400 si falta el contenido del comentario o autorId.', async () => {
-             /*
-            const response = await request(app)
-                .post(`/${MOCK_POST_ID}/comments`)
-                .send({ authorId: MOCK_AUTHOR_ID, content: null });
-            expect(response.statusCode).toBe(400);
-         */
-        });
-
-        it('debería devolver 500 si el postId no existe (fallo de FK o Post 404)', async () => {
-             /*
-            const response = await request(app)
-                .post('/999/comments') // Usamos un ID que sabemos que no existe
-                .send({ authorId: MOCK_AUTHOR_ID, content: 'Prueba de falla' });
-            expect(response.statusCode).toBe(500);
-         */
-        });
-    });
-
-
-    // =========================================
-    // TEST 2: GET /posts/:postId/comments - Listar comentarios (Lectura)
-    describe('GET /comments', () => {
-        it('debería listar todos los comentarios para un post dado con status 200 y devolver la lista correcta.', async () => {
-            /*
-            const response = await request(app).get(`/${MOCK_POST_ID}/comments`);
-
-            expect(response.statusCode).toBe(200);
-            expect(Array.isArray(response.body)).toBe(true);
-            // Esperamos los comentarios semillas (de ejemplo)
-            expect(response.body.length).toBeGreaterThanOrEqual(1);
-         */
-        });
-
-        it('debería devolver 404 si el postId no existe.', async () => {
-             /*
-            const response = await request(app).get('/999/comments'); // ID inexistente
-            expect(response.statusCode).toBe(404);
-         */
-        });
-    });
+    expect(response.statusCode).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+  });
 });

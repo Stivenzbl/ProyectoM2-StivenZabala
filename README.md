@@ -1,100 +1,104 @@
-# MiniBlog API - Backend Service
+# MiniBlog API
 
-## 🎯 Descripción del Proyecto
+## Descripción
 
-La MiniBlog API es un servicio RESTful backend desarrollado en **Node.js y Express** para gestionar el contenido principal de la plataforma Miniblog, incluyendo usuarios (authors), publicaciones (posts) y comentarios asociados. Su propósito es proporcionar una capa de datos estable y validada que sirva como base de consumo para los prototipos frontend existentes.
+Esta API REST construida con Node.js y Express permite gestionar autores, posts y comentarios de una plataforma tipo blog. El proyecto sigue una estructura modular con rutas, controladores, servicios y acceso a PostgreSQL.
 
-El diseño sigue las mejores prácticas de arquitectura limpia: la lógica de negocio reside en **Services**, la gestión HTTP en **Controllers**, y el acceso a datos está encapsulado en la capa de conexión DB.
+## Requisitos
 
-## 🚀 Requisitos Previos
+- Node.js 18 o superior
+- PostgreSQL en ejecución
+- npm
 
-Antes de ejecutar la aplicación, debes asegurarte de tener instalado lo siguiente:
-1.  **Node.js:** Versión LTS (Se recomienda v18+).
-2.  **PostgreSQL Server:** El servidor debe estar corriendo localmente en `localhost:5432`.
-3.  **Dependencias del proyecto:**
+## Instalación
+
+1. Clona el repositorio y entra a la carpeta del proyecto.
+2. Instala las dependencias:
 
 ```bash
 npm install
-# Se requiere la librería 'dotenv' para cargar las credenciales de entorno.
 ```
 
-## ⚙️ Configuración Inicial (Setup)
+3. Copia el archivo de ejemplo de variables de entorno:
 
-Este proceso inicializa la base de datos con el esquema necesario y carga los datos semilla de ejemplo. **Debe ejecutarse una única vez.**
+```bash
+copy .env.example .env
+```
 
-1.  **Crear Variables de Entorno:** Copia el contenido de `.env.example` a un archivo llamado `.env` en la raíz del proyecto:
-    ```bash
-    cp .env.example .env
-    ```
-2.  **Editar `.env`:** Modifica las credenciales (`PG_USER`, `PG_PASSWORD`, etc.) con tus datos de PostgreSQL.
+4. Ajusta los valores de conexión en el archivo `.env`.
 
-3.  **Ejecutar Setup y Seed (Script SQL):** Para inicializar la base de datos:
-    *   Abre tu cliente de PostgreSQL (ej: `psql`).
-    *   Conéctate a la base de datos `miniblog_db`.
-    *   Ejecuta los scripts en el orden correcto:
+## Variables de entorno
 
-    ```sql
-    -- 1. Crear Esquema (Authores, Posts, Comments)
-    \i src/db/migrations/setup.sql;
-    
-    -- 2. Insertar Datos de Ejemplo
-    \i src/db/migrations/seed.sql;
-    ```
+El proyecto acepta estas variables:
 
-## ▶️ Ejecución Local del Servidor
+```env
+PORT=3000
+PG_HOST=localhost
+PG_PORT=5432
+PG_DATABASE=miniblog_db
+PG_USER=postgres
+PG_PASSWORD=postgres
+DB_MAX_CONNECT=10
+DB_IDLETIMEOUT=10000
+DB_CONNECTIONTIMEOUT=5000
+```
 
-Una vez configurada la DB y las credenciales, puedes iniciar el servidor:
+> El servidor también soporta nombres alternativos como `DB_HOST`, `DB_NAME` y `DB_PASSWORD`, pero se recomienda usar `PG_*`.
+
+## Ejecución local
+
+Inicia la API con:
 
 ```bash
 npm run dev
-# O si se usa el script directo: node index.js
 ```
-El servidor debería responder en `http://localhost:3000` con el mensaje "MiniBlog API - Backend funcionando correctamente".
 
-## 🧪 Ejecución de Tests Unitarios
+La aplicación levantará el servidor en el puerto configurado y, al arrancar, creará automáticamente las tablas necesarias y insertará datos iniciales si aún no existen.
 
-Para verificar la lógica del backend sin afectar la base de datos, los tests están escritos usando Supertest y vitest. **Nota:** Estos tests asumen que se ejecuta un *mock* del servicio para aislar la capa HTTP.
+## Endpoints principales
+
+- `GET /` → confirma que el servidor está activo
+- `GET /authors` → lista autores
+- `POST /authors` → crea un autor
+- `GET /authors/:id` → obtiene un autor
+- `PUT /authors/:id` → actualiza un autor
+- `DELETE /authors/:id` → elimina un autor
+- `GET /posts` → lista posts
+- `POST /posts` → crea un post
+- `GET /posts/author/:authorId` → lista posts por autor
+- `GET /posts/:id` → obtiene un post con sus comentarios
+- `POST /posts/:postId/comments` → crea un comentario
+- `GET /posts/:postId/comments` → lista comentarios de un post
+- `PUT /posts/:id` → actualiza un post
+- `DELETE /posts/:id` → elimina un post
+
+## Pruebas
+
+Ejecuta la suite de pruebas con:
 
 ```bash
-npx vitest run
-# O según el script 'test' definido en package.json
+npm test
 ```
 
-## 🌐 Documentación API (OpenAPI)
+## Documentación OpenAPI
 
-El contrato de la API está generado y detallado en `openapi.yaml`. Se recomienda utilizar esta especificación para generar documentación interactiva con Swagger UI.
+El contrato de la API está en [openapi.yaml](openapi.yaml).
 
-**Consulta la estructura completa aquí:** [`openapi.yaml`](./openapi.yaml)
+## Despliegue en Railway
 
-## ☁️ Guía de Deployment en Railway
+Para desplegar en Railway:
 
-Para desplegar este servicio en un entorno productivo como Railway, debes seguir estos pasos:
+1. Agrega una base de datos PostgreSQL y anexa las variables de entorno correspondientes.
+2. Define `PORT` y `NODE_ENV=production`.
+3. Usa `npm start` como comando de inicio.
+4. Asegura que la base de datos esté accesible desde la instancia desplegada.
 
-1.  **Configuración del Servicio:**
-    *   Conecta el servicio a tu base de datos PostgreSQL externa.
-    *   Crea las siguientes **Variables de Entorno** y asegúrate que los valores son permanentes y seguros:
-        ```bash
-        PG_HOST=<Host de Railway DB>
-        PG_PORT=5432
-        PG_USER=<Usuario de la DB>
-        PG_PASSWORD=<Contraseña Secreta de la DB>
-        PG_DATABASE=miniblog_db
-        PORT=3000 # Debe coincidir con el puerto configurado en index.js
-        NODE_ENV=production # Es vital establecerlo a production
-        ```
+## Estructura del proyecto
 
-2.  **Configuración del Script de Arranque:**
-    *   En `package.json`, asegúrate que el script de *start* apunte correctamente:
-      `"start": "node index.js"` (o similar, sin ejecutar la lógica de setup/seed).
-
-3.  **Migraciones en Producción:** **¡CRÍTICO!** En un entorno real, nunca se debe incluir `setup.sql` o `seed.sql` directamente al arrancar el servidor. Se debe usar una herramienta dedicada de migraciones (ej: Knex, TypeORM) que corra *antes* del inicio HTTP, garantizando transaccionalmente la creación de tablas y la carga inicial de datos.
-
-## 🧠 Uso de IA en el Proyecto
-
-Se utilizó Claude Code como soporte principal para:
-1.  Diseño arquitectónico modular (separación Controller/Service).
-2.  Generación de patrones de código estándar (CRUD, middleware de manejo de errores).
-3.  Creación y estandarización del contrato OpenAPI.
-
----
-***Este entregable está listo para ser versionado en GitHub.* ---
+- [index.js](index.js) → inicia el servidor y la base de datos
+- [src/server.js](src/server.js) → configura Express
+- [src/routes](src/routes) → define las rutas de la API
+- [src/controllers](src/controllers) → maneja la lógica HTTP
+- [src/services](src/services) → encapsula la lógica de negocio y SQL
+- [src/config](src/config) → conecta con PostgreSQL y crea el esquema inicial
+- [__tests__](__tests__) → pruebas HTTP con Supertest y Vitest

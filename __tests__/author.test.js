@@ -1,68 +1,51 @@
-// __tests__/author.test.js
-const request = require('supertest');
-const express = require('express');
+import request from 'supertest';
+import express from 'express';
+import { createRequire } from 'module';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const require = createRequire(import.meta.url);
+const authorService = require('../src/services/authorService');
 const authorRoutes = require('../src/routes/authorRoutes');
 
-// 1. Configurar la aplicación Express minimalista SOLO para testing de rutas.
 const app = express();
 app.use(express.json());
-app.use('/authors', authorRoutes); // Mountamos solo las rutas de autores por ahora.
+app.use('/authors', authorRoutes);
 
-describe('Authors API Endpoints Tests (/api/v1/authors)', () => {
-    // Para que los tests sean idempotentes, en un entorno real se debería limpiar la DB ANTES y DESPUÉS del suite (setup/teardown)
-    // Aquí simulamos que esto ocurre por el ciclo de vida de las pruebas.
+describe('Authors API Endpoints', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authorService.getAllAuthors = vi.fn();
+    authorService.getAuthorById = vi.fn();
+    authorService.createAuthor = vi.fn();
+    authorService.updateAuthor = vi.fn();
+    authorService.deleteAuthor = vi.fn();
+  });
 
-    // =========================================
-    // TEST 1: GET /authors - Listar usuarios
-    describe('GET /', () => {
-        it('debería listar todos los autores disponibles con un status 200', async () => {
-            const response = await request(app).get('/authors');
+  it('debería listar autores con status 200', async () => {
+    authorService.getAllAuthors.mockResolvedValue([
+      { id: 1, name: 'Ana', email: 'ana@example.com', bio: 'Bio', created_at: '2024-01-01T00:00:00.000Z' }
+    ]);
 
-            expect(response.statusCode).toBe(200);
-            expect(Array.isArray(response.body)).toBe(true);
-            // Si tenemos seeds, esperamos al menos 3 autores iniciales.
-            expect(response.body.length).toBeGreaterThanOrEqual(3);
-        });
+    const response = await request(app).get('/authors');
 
-        it('debería devolver 404 si no hay autores registrados', async () => {
-            // Nota: Para este test, necesitaríamos una forma de vaciar la tabla 'authors' primero.
-            // Aquí lo dejamos como un comentario conceptual para saber qué probar después.
-            /*
-            await jest.spyOn(authorService, 'getAllAuthors').mockResolvedValue([]); // Mockear el servicio
-            const response = await request(app).get('/authors');
-            expect(response.statusCode).toBe(404);
-            */
-        });
-    });
+    expect(response.statusCode).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+    expect(response.body[0].name).toBe('Ana');
+  });
 
-    // =========================================
-    // TEST 2: POST /authors - Crear usuario
-    describe('POST /', () => {
-        it('debe crear un nuevo autor exitosamente con status 201 y devolver el objeto creado', async () => {
-            const newAuthorData = { name: 'Test User', email: 'test@example.com', bio: 'Testing API' };
+  it('debería crear un autor con status 201', async () => {
+    const payload = { name: 'Test User', email: 'test@example.com', bio: 'Testing API' };
+    authorService.createAuthor.mockResolvedValue({ id: 99, ...payload, created_at: '2024-01-01T00:00:00.000Z' });
 
-            // Creamos mock del servicio para asegurar que los tests solo dependen de la lógica HTTP, no de la BD real.
-             /*
-             jest.spyOn(authorService, 'createAuthor').mockResolvedValue({ id: 99, ...newAuthorData });
-             const response = await request(app).post('/authors').send(newAuthorData);
-             expect(response.statusCode).toBe(201);
-             expect(response.body.id).toBe(99);
-             */
-        });
+    const response = await request(app).post('/authors').send(payload);
 
-        it('debe devolver 400 si faltan campos obligatorios (name/email)', async () => {
-            // const response = await request(app).post('/authors').send({ name: 'Test' }); // Falta email
-            // expect(response.statusCode).toBe(400);
-        });
+    expect(response.statusCode).toBe(201);
+    expect(response.body.id).toBe(99);
+  });
 
-        it('debe devolver 409 si el correo electrónico ya está registrado', async () => {
-             /*
-             jest.spyOn(authorService, 'createAuthor').mockRejectedValue({ message: "unique constraint violation" });
-             const response = await request(app).post('/authors').send({ name: 'Test Duplicate', email: 'test@example.com', bio: null });
-             expect(response.statusCode).toBe(409);
-             */
-        });
-    });
+  it('debería devolver 400 si faltan datos obligatorios', async () => {
+    const response = await request(app).post('/authors').send({ name: 'Test User' });
 
-    // Nota: Los tests PUT, GET/:id y DELETE se seguirán en iteraciones posteriores para asegurar la cobertura total de recursos.
+    expect(response.statusCode).toBe(400);
+  });
 });

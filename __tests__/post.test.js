@@ -1,77 +1,74 @@
-// __tests__/post.test.js
-const request = require('supertest');
-const express = require('express');
+import request from 'supertest';
+import express from 'express';
+import { createRequire } from 'module';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const require = createRequire(import.meta.url);
+const postService = require('../src/services/postService');
+const commentService = require('../src/services/commentService');
 const postRoutes = require('../src/routes/postRoutes');
 
-// 1. Configurar la aplicación Express minimalista para testing de rutas.
 const app = express();
 app.use(express.json());
-// Usamos el router que expone todas las funcionalidades de posts y comentarios
 app.use('/posts', postRoutes);
 
-describe('Posts and Comments API Endpoints Tests (/api/v1/posts)', () => {
+describe('Posts API Endpoints', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    postService.getAllPosts = vi.fn();
+    postService.getPostById = vi.fn();
+    postService.createPost = vi.fn();
+    postService.getPostsByAuthor = vi.fn();
+    postService.updatePost = vi.fn();
+    postService.deletePost = vi.fn();
+    commentService.createComment = vi.fn();
+    commentService.listCommentsByPost = vi.fn();
+  });
 
-    // --- MOCKS DE DATOS INICIALES PARA PRUEBAS ---
-    const MOCK_AUTHOR_ID = '1'; // Asumimos que el ID de un autor existente
-    const POST_ID = 5;          // Usamos el ID del post sembrado 'Async/Await explicado'
+  it('debería listar posts con status 200', async () => {
+    postService.getAllPosts.mockResolvedValue([
+      { id: 1, title: 'Hola', content: 'Contenido', author_id: 1, published: true, created_at: '2024-01-01T00:00:00.000Z' }
+    ]);
 
-    // =========================================
-    // TEST 1: GET /posts/author/:authorId - Listar posts por autor (Combinación)
-    describe('GET /author/:authorId', () => {
-        it('debe listar correctamente todos los posts de un autor específico con status 200', async () => {
-            // Se asume que existen posts para el autor ID=1 en la BD seed.sql
-            const response = await request(app).get(`/author/${MOCK_AUTHOR_ID}`);
+    const response = await request(app).get('/posts');
 
-            expect(response.statusCode).toBe(200);
-            expect(Array.isArray(response.body)).toBe(true);
-            // Esperamos al menos 3 posts de los seeds disponibles para el autor 1
-        });
+    expect(response.statusCode).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+  });
 
-        it('debe devolver 404 si se pide un authorId inexistente', async () => {
-             /*
-            const response = await request(app).get(`/author/999`);
-            expect(response.statusCode).toBe(404);
-            */
-        });
-    });
+  it('debería crear un post con status 201', async () => {
+    const payload = { title: 'Nuevo post', content: 'Contenido del post', authorId: 1, published: true };
+    postService.createPost.mockResolvedValue({ id: 10, ...payload, created_at: '2024-01-01T00:00:00.000Z' });
 
-    // =========================================
-    // TEST 2: POST /posts/:postId/comments - Crear comentario (Flujo de datos compuesto)
-    describe('POST /:postId/comments', () => {
-        it('debe crear un comentario exitosamente, asumiendo post y autor válidos', async () => {
-            const newComment = { authorId: '999', content: '¡Excelente contenido!' };
+    const response = await request(app).post('/posts').send(payload);
 
-            // Simulación de la llamada en el controlador que usa params.postId
-            const response = await request(app)
-                .post(`/${POST_ID}/comments`) // Endpoint simulado con post ID fijo
-                .send(newComment);
+    expect(response.statusCode).toBe(201);
+    expect(response.body.id).toBe(10);
+  });
 
-            expect(response.statusCode).toBe(201);
-            expect(response.body).toHaveProperty('message', 'Comentario publicado exitosamente.');
-        });
+  it('debería devolver 400 si faltan datos obligatorios', async () => {
+    const response = await request(app).post('/posts').send({ title: 'Falta contenido' });
 
-        it('debe devolver 400 si falta contenido o authorId', async () => {
-            const response = await request(app)
-                .post(`/${POST_ID}/comments`)
-                .send({ content: '' }); // Falta authorId
-            expect(response.statusCode).toBe(400);
-        });
-    });
+    expect(response.statusCode).toBe(400);
+  });
 
-     // =========================================
-    // TEST 3: GET /posts/:id - Obtener Post + Comentarios (Flujo de datos compuesto)
-    describe('GET /:id', () => {
-        it('debe devolver el post base y una lista de comentarios asociados con status 200', async () => {
-            // Este test es el más importante, ya que comprueba la composición de datos.
-             /*
-            const response = await request(app).get(`/${POST_ID}`);
+  it('debería listar posts por autor con status 200', async () => {
+    postService.getPostsByAuthor.mockResolvedValue([
+      { id: 2, title: 'Post de autor', content: 'Contenido', author_id: 1, published: true, created_at: '2024-01-01T00:00:00.000Z' }
+    ]);
 
-            expect(response.statusCode).toBe(200);
-            expect(response.body).toHaveProperty('post'); // Debe existir el objeto base
-            expect(response.body).toHaveProperty('comments'); // Y la lista de comentarios
-            expect(Array.isArray(response.body.comments)).toBe(true);
-         */
-        });
-    });
+    const response = await request(app).get('/posts/author/1');
 
+    expect(response.statusCode).toBe(200);
+    expect(Array.isArray(response.body)).toBe(true);
+  });
+
+  it('debería crear un comentario con status 201', async () => {
+    commentService.createComment.mockResolvedValue({ id: 1, post_id: 1, author_id: 1, content: 'Muy bueno', created_at: '2024-01-01T00:00:00.000Z' });
+
+    const response = await request(app).post('/posts/1/comments').send({ authorId: 1, content: 'Muy bueno' });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.body.message).toBe('Comentario publicado exitosamente.');
+  });
 });

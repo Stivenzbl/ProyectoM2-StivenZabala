@@ -1,53 +1,50 @@
-// src/services/authorService.js
+const db = require('../db/connection');
 
-const db = require('../db/connection'); // Utilizamos la función query de conexión
-
-/**
- * Obtiene todos los autores de forma paginada y ordenada.
- */
 exports.getAllAuthors = async () => {
-    // TODO: Implementar consulta parametrizada para listar todos los authors.
-    // Debe manejar el caso de no resultados (array vacío).
-    const queryText = `SELECT id, name, email, bio, created_at FROM authors ORDER BY created_at DESC;`;
-    return db.query(queryText);
+  const queryText = 'SELECT id, name, email, bio, created_at FROM authors ORDER BY created_at DESC;';
+  return db.query(queryText);
 };
 
-/**
- * Crea un nuevo autor en la base de datos después de validar inputs críticos.
- * @param {object} authorData - Objeto con nombre y email.
- * @returns {Promise<object>} El objeto del autor creado.
- */
 exports.createAuthor = async (authorData) => {
-    // TODO: VALIDACIÓN CRÍTICA: Verificar que el email NO exista en la DB antes de insertar.
-    const queryText = `INSERT INTO authors (name, email, bio) VALUES ($1, $2, $3) RETURNING id, name, email, bio, created_at;`;
-    // Implementación con valores parametrizados y manejo de UNIQUE constraint violation en PG.
-    return db.query(queryText, [authorData.name, authorData.email, authorData.bio]);
+  const queryText = 'INSERT INTO authors (name, email, bio) VALUES ($1, $2, $3) RETURNING id, name, email, bio, created_at;';
+  const rows = await db.query(queryText, [authorData.name, authorData.email, authorData.bio]);
+  return rows[0];
 };
 
-/**
- * Obtiene un autor por su ID.
- */
 exports.getAuthorById = async (id) => {
-    // TODO: Implementar consulta parametrizada para buscar por ID.
-    const queryText = `SELECT id, name, email, bio, created_at FROM authors WHERE id = $1;`;
-    return db.query(queryText, [id]);
+  const queryText = 'SELECT id, name, email, bio, created_at FROM authors WHERE id = $1;';
+  const rows = await db.query(queryText, [id]);
+  return rows[0] || null;
 };
 
-/**
- * Actualiza la información de un autor existente.
- * @param {string} id - ID del autor a modificar.
- * @param {object} updateData - Datos parciales a actualizar (name, email, bio).
- * @returns {Promise<object>} El objeto del autor actualizado.
- */
 exports.updateAuthor = async (id, updateData) => {
-    // TODO: Implementar consulta que actualice solo los campos proporcionados y verifique la unicidad del nuevo email.
+  const allowedFields = ['name', 'email', 'bio'];
+  const entries = Object.entries(updateData).filter(([key, value]) => allowedFields.includes(key) && value !== undefined);
+
+  if (entries.length === 0) {
+    return exports.getAuthorById(id);
+  }
+
+  const setClauses = entries.map(([key], index) => `${key} = $${index + 1}`).join(', ');
+  const values = entries.map(([, value]) => value === '' ? null : value);
+  values.push(id);
+
+  const queryText = `UPDATE authors SET ${setClauses} WHERE id = $${entries.length + 1} RETURNING id, name, email, bio, created_at;`;
+  const rows = await db.query(queryText, values);
+  if (!rows[0]) {
+    const error = new Error('Autor no encontrado');
+    error.status = 404;
+    throw error;
+  }
+  return rows[0];
 };
 
-/**
- * Elimina un autor por ID. Debe manejar la lógica de integridad referencial
- * para evitar borrar autores con posts asociados (ON DELETE RESTRICT).
- * @param {string} id - ID del autor a eliminar.
- */
 exports.deleteAuthor = async (id) => {
-    // TODO: Implementar consulta DELETE. Debería verificar si existen posts o comentarios antes de permitir la eliminación, o dejar que PG lo maneje con una excepción.
+  const queryText = 'DELETE FROM authors WHERE id = $1 RETURNING id;';
+  const rows = await db.query(queryText, [id]);
+  if (!rows[0]) {
+    const error = new Error('Autor no encontrado');
+    error.status = 404;
+    throw error;
+  }
 };

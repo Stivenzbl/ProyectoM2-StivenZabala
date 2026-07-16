@@ -4,8 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "vitest",
-    "dev": "node --watch index.js"
+    "test": "vitest run",
+    "dev": "node --watch index.js",
+    "start": "node index.js",
+    "check": "npm test"
   },
   "keywords": [],
   "author": "",
