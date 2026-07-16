@@ -1,7 +1,7 @@
 const db = require('../db/connection');
 
 exports.getAllAuthors = async () => {
-  const queryText = 'SELECT id, name, email, bio, created_at FROM authors ORDER BY created_at DESC;';
+  const queryText = 'SELECT id, name, email, bio, created_at FROM authors ORDER BY id ASC;';
   return db.query(queryText);
 };
 

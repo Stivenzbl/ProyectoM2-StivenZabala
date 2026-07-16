@@ -9,7 +9,7 @@ exports.getAllPosts = async (authorId = null) => {
     params.push(authorId);
   }
 
-  queryText += ' ORDER BY created_at DESC';
+  queryText += ' ORDER BY id ASC';
   const rows = await db.query(queryText, params);
   return rows;
 };
@@ -35,7 +35,7 @@ exports.getPostsByAuthor = async (authorId) => {
     FROM posts p
     JOIN authors a ON a.id = p.author_id
     WHERE p.author_id = $1
-    ORDER BY p.created_at DESC;
+    ORDER BY p.id ASC;
   `;
   const rows = await db.query(queryText, [authorId]);
   // Embebemos el detalle del autor en cada post para cumplir con la consigna

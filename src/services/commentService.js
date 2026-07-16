@@ -7,6 +7,6 @@ exports.createComment = async (postId, authorId, content) => {
 };
 
 exports.listCommentsByPost = async (postId) => {
-  const queryText = 'SELECT id, author_id, content, created_at FROM comments WHERE post_id = $1 ORDER BY created_at ASC;';
+  const queryText = 'SELECT id, author_id, content, created_at FROM comments WHERE post_id = $1 ORDER BY id ASC;';
   return db.query(queryText, [postId]);
 };
